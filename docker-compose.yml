@@ -1,0 +1,72 @@
+services:
+  consul:
+    image: hashicorp/consul:1.20.2
+    command: agent -dev -client=0.0.0.0
+    ports:
+      - "8500:8500"
+    networks:
+      - lab-net
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "4318:4318"
+    networks:
+      - lab-net
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    networks:
+      - lab-net
+
+  service2:
+    build: ./service2
+    environment:
+      - MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://tempo:4318/v1/traces
+      - MANAGEMENT_TRACING_ENABLED=true
+    depends_on:
+      - consul
+      - tempo
+    networks:
+      - lab-net
+
+  service1:
+    build: ./service1
+    environment:
+      - MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://tempo:4318/v1/traces
+      - MANAGEMENT_TRACING_ENABLED=true
+    depends_on:
+      - consul
+      - tempo
+    networks:
+      - lab-net
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8888:8888"
+    environment:
+      - MANAGEMENT_TRACING_SAMPLING_PROBABILITY=1.0
+      - MANAGEMENT_OTLP_TRACING_ENDPOINT=http://tempo:4318/v1/traces
+      - MANAGEMENT_TRACING_ENABLED=true
+    depends_on:
+      - consul
+      - tempo
+    networks:
+      - lab-net
+
+networks:
+  lab-net:

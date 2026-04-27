@@ -1,0 +1,29 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: service1
+  cloud:
+    consul:
+      host: consul
+      port: 8500
+    loadbalancer:
+      ribbon:
+        enabled: false
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://tempo:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    io.micrometer.tracing: DEBUG
